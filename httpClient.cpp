@@ -11,7 +11,9 @@ unsigned short PORT = 8080; 		// default port value
 string FILE_PATH("/");
 string SERVER_NAME;
 string OUTPUT_FILENAME;
+string HTTP_RESPONSE("");
 string REQUEST_MESSAGE("GET ");
+void getHTTPResponse(int);
 
 
 int main (int argc, char *argv[]) {
@@ -66,7 +68,32 @@ int main (int argc, char *argv[]) {
     if (send(sock, REQUEST_MESSAGE.c_str(), REQUEST_MESSAGE.length(), 0) != REQUEST_MESSAGE.length())
         dieWithError((char *)"send() sent a different number of bytes than expected");
 
+    getHTTPResponse(sock);
+    cout << HTTP_RESPONSE << endl;
+
+    close(sock);
 	return 0;
+}
+
+
+void getHTTPResponse(int sock) {
+    char httpRequestBuffer[RECV_BUFF_SIZE];
+    int messageLen;
+    cout << "Got here 1" << endl;
+
+    if ((messageLen = recv(sock, httpRequestBuffer, RECV_BUFF_SIZE, 0)) < 0)
+        dieWithError((char *)"recv() failed");
+    cout << "Got here 2" << endl;
+
+    while (messageLen > 0) {
+        /* build the HTTP_RESPONSE as a char vector */
+        for (int i = 0; i < messageLen; ++i) {
+            HTTP_RESPONSE += httpRequestBuffer[i];
+        }
+
+        if ((messageLen = recv(sock, httpRequestBuffer, RECV_BUFF_SIZE, 0)) < 0)
+            dieWithError((char *)"recv() failed"); 
+    }
 }
 
 

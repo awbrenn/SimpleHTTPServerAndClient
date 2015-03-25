@@ -15,6 +15,8 @@ void checkHostIsPresent();
 void getServerDateTime();
 void getLastModifiedTime();
 void getContentType();
+string getHTTPErrorMessage(int);
+void sendHTTPResponse(int);
 void cleanup();
 
 
@@ -55,7 +57,7 @@ int main (int argc, char *argv[]) {
     else
        stateProperUsageAndDie();
 
-   /* Create socket for sending/receiving datagrams */
+   /* Create socket for sending/receiving data */
     if ((serverSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
         dieWithError((char *)"socket() failed");
 
@@ -84,12 +86,43 @@ int main (int argc, char *argv[]) {
         // printf("Handling client %s\n", inet_ntoa(clientAddr.sin_addr));
 
         getHTTPRequest(clientSock);
+        cout << "Got Here 1" << endl;
         processHTTPRequest();
         checkHostIsPresent();
         getHTTPResponeBody();
         buildHTTPResponse();
+        sendHTTPResponse(clientSock);
+        cout << "Got Here 2" << endl;
         cleanup();
+        close(clientSock);
     }
+}
+
+
+void getHTTPRequest(int clientSock) {
+    char httpRequestBuffer[RECV_BUFF_SIZE];
+    int messageLen;
+
+    if ((messageLen = recv(clientSock, httpRequestBuffer, RECV_BUFF_SIZE, 0)) < 0)
+        dieWithError((char *)"recv() failed");
+
+    while (messageLen > 0) {
+        /* build the HTTP_REQUEST as a char vector */
+        for (int i = 0; i < messageLen; ++i) {
+            HTTP_REQUEST += httpRequestBuffer[i];
+        }
+
+        if ((messageLen = recv(clientSock, httpRequestBuffer, RECV_BUFF_SIZE, 0)) < 0)
+            dieWithError((char *)"recv() failed"); 
+    }
+}
+
+
+void sendHTTPResponse(int sock) {
+    cout << "Got Here" << endl;
+    /* Send the string to the server */
+    if (send(sock, HTTP_RESPONSE.c_str(), HTTP_RESPONSE.length(), 0) != HTTP_RESPONSE.length())
+        dieWithError((char *)"send() sent a different number of bytes than expected");
 }
 
 
@@ -110,29 +143,6 @@ void checkHostIsPresent() {
         RESPONSE_NUM = 200;
     else
         RESPONSE_NUM = 400;
-}
-
-
-void getHTTPRequest(int clientSock) {
-    char httpRequestBuffer[RECV_BUFF_SIZE];
-    int messageLen;
-
-    if ((messageLen = recv(clientSock, httpRequestBuffer, RECV_BUFF_SIZE, 0)) < 0)
-        dieWithError((char *)"recv() failed");
-
-    while (messageLen > 0) {
-        /* build the HTTP_REQUEST as a char vector */
-        for (int i = 0; i < messageLen; ++i) {
-            HTTP_REQUEST += httpRequestBuffer[i];
-        }
-
-        if ((messageLen = recv(clientSock, httpRequestBuffer, RECV_BUFF_SIZE, 0)) < 0)
-            dieWithError((char *)"recv() failed"); 
-    }
-    close(clientSock);
-
-    /* print out the message recieved */
-
 }
 
 
@@ -221,21 +231,60 @@ void buildGoodResponse() {
     HTTP_RESPONSE_HEADER += "Connection: close\r\n";
     HTTP_RESPONSE_HEADER += "Date: " + SERVER_DATETIME + "\r\n";
     HTTP_RESPONSE_HEADER += "Last-Modified: " + LAST_MODIFIED_DATETIME + "\r\n";
+    HTTP_RESPONSE_HEADER += "Content -Type: " + CONTENT_TYPE + "\r\n";
     HTTP_RESPONSE_HEADER += "Content -Length: " + to_string(HTTP_RESPONSE_BODY.length()) + "\r\n";
     HTTP_RESPONSE_HEADER += "Server: MyLittleHTTPD/1.2\r\n";
     HTTP_RESPONSE_HEADER += "\r\n";
 
-    HTTP_RESPONSE = HTTP_RESPONSE_HEADER + HTTP_RESPONSE_BODY;
+    if (HTTP_METHOD == 1)
+        HTTP_RESPONSE = HTTP_RESPONSE_HEADER + HTTP_RESPONSE_BODY;
+    else
+        HTTP_RESPONSE = HTTP_RESPONSE_HEADER;
     cout << "\n" + HTTP_RESPONSE << endl;
 }
 
 void buildBadResponse() {
-    //stubbed
-    cout << "\nBAD RESPONSE " << RESPONSE_NUM << endl;
+    HTTP_RESPONSE_HEADER = "HTTP/1.1 " + to_string(RESPONSE_NUM) +
+                           getHTTPErrorMessage(RESPONSE_NUM) + "\r\n";
+
+   HTTP_RESPONSE = HTTP_RESPONSE_HEADER;
+    cout << "\n" + HTTP_RESPONSE << endl;
+}
+
+string getHTTPErrorMessage(int RESPONSE_NUM) {
+    string return_string("");
+
+    if (RESPONSE_NUM == 405)
+        return_string = " METHOD NOT FOUND";
+    else if (RESPONSE_NUM == 403)
+        return_string = " FORBIDDEN";
+    else if (RESPONSE_NUM == 404)
+        return_string = " NOT FOUND";
+    else if (RESPONSE_NUM == 400)
+        return_string = " BAD REQUEST";
+
+    return return_string;
 }
 
 void getContentType() {
-    begin_file_name_index;
+    int begin_file_extension_index;
+    string extension;
+
+    begin_file_extension_index = SERVER_PATH.find_last_of(".");
+
+    if (begin_file_extension_index == string::npos)
+        CONTENT_TYPE = "application/octet-stream";
+
+    extension = SERVER_PATH.substr(begin_file_extension_index+1,
+                                    SERVER_PATH.length() - begin_file_extension_index);
+
+    if      (extension.compare("html") == 0)  CONTENT_TYPE = "text/html";
+    else if (extension.compare("htm")  == 0)  CONTENT_TYPE = "text/html";
+    else if (extension.compare("js")   == 0)  CONTENT_TYPE = "application/javascript";
+    else if (extension.compare("txt")  == 0)  CONTENT_TYPE = "text/plain";
+    else if (extension.compare("jpg")  == 0)  CONTENT_TYPE = "image/jpg";
+    else if (extension.compare("pdf")  == 0)  CONTENT_TYPE = "application/pdf";
+    else                                      CONTENT_TYPE = "application/octet-stream";
 }
 
 void getServerDateTime() {
