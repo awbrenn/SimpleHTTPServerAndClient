@@ -26,9 +26,13 @@ constants.
 #include <time.h>
 #include <sys/time.h>
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <signal.h>
 #include <stdint.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 
 #define MAX_RAND_NUMBER 65535 /* maximum value that the random number can be
