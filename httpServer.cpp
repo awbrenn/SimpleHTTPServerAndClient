@@ -1,3 +1,18 @@
+/*********************************************************
+File Name:  httpServer.cpp
+Author:     Austin Brennan
+Course:     CPSC 3600
+Instructor: Sekou Remy
+Due Date:   03/25/2015
+
+
+File Description:
+This file contains an implementation of a simple
+http server. See readme.txt for more details.
+
+*********************************************************/
+
+
 #include "httpSim.h"
 using namespace std;
 
@@ -99,6 +114,7 @@ int main (int argc, char *argv[]) {
 }
 
 
+// gets the httpRequest
 void getHTTPRequest(int clientSock) {
     char httpRequestBuffer[RECV_BUFF_SIZE];
     int messageLen;
@@ -118,14 +134,16 @@ void getHTTPRequest(int clientSock) {
 }
 
 
+// sends the response back to the client
 void sendHTTPResponse(int sock) {
     cout << "Got Here" << endl;
     /* Send the string to the server */
-    if (send(sock, HTTP_RESPONSE.c_str(), HTTP_RESPONSE.length(), 0) != HTTP_RESPONSE.length())
+    if (send(sock, HTTP_RESPONSE.c_str(), HTTP_RESPONSE.length(), 0) != (int)HTTP_RESPONSE.length())
         dieWithError((char *)"send() sent a different number of bytes than expected");
 }
 
 
+// gets the body of the response message
 void getHTTPResponeBody() {
     ifstream fs(SERVER_PATH);
     if (fs) {
@@ -138,6 +156,8 @@ void getHTTPResponeBody() {
 }
 
 
+/* checks to see if the "Host" header field is present
+   in the http request */
 void checkHostIsPresent() {
     if (HTTP_REQUEST.find("\r\nHost:") != string::npos)
         RESPONSE_NUM = 200;
@@ -146,12 +166,14 @@ void checkHostIsPresent() {
 }
 
 
+// processes the http request
 void processHTTPRequest() {
     getHTTPMethod();
     getPath();
 }
 
 
+// get the path to the desired file 
 void getPath() {
     int begin_of_path_index;
     int end_of_path_index;
@@ -168,6 +190,7 @@ void getPath() {
 }
 
 
+// get the http method of the http request
 void getHTTPMethod() {
     int http_function_end_index;
     string method;
@@ -175,7 +198,7 @@ void getHTTPMethod() {
     http_function_end_index = HTTP_REQUEST.find_first_of(" "); // find the index of the first space
 
     /* check for bad http request */
-    if (http_function_end_index == HTTP_REQUEST.npos) {
+    if (http_function_end_index == (int)HTTP_REQUEST.npos) {
         RESPONSE_NUM = 400; // malformed http request
         return;
     }
@@ -214,6 +237,7 @@ void getHTTPMethod() {
 }
 
 
+// build the http Reesponse
 void buildHTTPResponse() {
     if (RESPONSE_NUM == 200)
         buildGoodResponse();
@@ -222,6 +246,7 @@ void buildHTTPResponse() {
 }
 
 
+// build the response of a 200 OK response
 void buildGoodResponse() {
     getServerDateTime();
     getLastModifiedTime();
@@ -243,6 +268,8 @@ void buildGoodResponse() {
     cout << "\n" + HTTP_RESPONSE << endl;
 }
 
+
+// build the response of a message with error notification
 void buildBadResponse() {
     HTTP_RESPONSE_HEADER = "HTTP/1.1 " + to_string(RESPONSE_NUM) +
                            getHTTPErrorMessage(RESPONSE_NUM) + "\r\n";
@@ -251,6 +278,8 @@ void buildBadResponse() {
     cout << "\n" + HTTP_RESPONSE << endl;
 }
 
+
+// get the http error message based on the response number
 string getHTTPErrorMessage(int RESPONSE_NUM) {
     string return_string("");
 
@@ -266,13 +295,15 @@ string getHTTPErrorMessage(int RESPONSE_NUM) {
     return return_string;
 }
 
+
+// get the content type to be returned
 void getContentType() {
     int begin_file_extension_index;
     string extension;
 
     begin_file_extension_index = SERVER_PATH.find_last_of(".");
 
-    if (begin_file_extension_index == string::npos)
+    if (begin_file_extension_index == (int)string::npos)
         CONTENT_TYPE = "application/octet-stream";
 
     extension = SERVER_PATH.substr(begin_file_extension_index+1,
@@ -287,6 +318,8 @@ void getContentType() {
     else                                      CONTENT_TYPE = "application/octet-stream";
 }
 
+
+// get the datetime of the server
 void getServerDateTime() {
     char buffer[200];
     time_t current_time;
@@ -303,6 +336,7 @@ void getServerDateTime() {
 }
 
 
+// get the last time the desired file was modified
 void getLastModifiedTime() {
     char buffer[200];
     struct stat stat_buffer;
@@ -320,6 +354,7 @@ void getLastModifiedTime() {
 }
 
 
+// cleanup the strings for the next time the server runs
 void cleanup() {
     SERVER_PATH = "./";
     HTTP_REQUEST = "";

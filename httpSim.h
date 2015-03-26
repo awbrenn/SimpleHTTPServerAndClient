@@ -3,7 +3,7 @@ File Name:  DNSClient.h
 Author:     Austin Brennan
 Course:     CPSC 3600
 Instructor: Sekou Remy
-Due Date:   03/06/2015
+Due Date:   03/25/2015
 
 
 File Description:
@@ -35,9 +35,7 @@ constants.
 #include <unistd.h>
 
 
-#define MAX_RAND_NUMBER 65535 /* maximum value that the random number can be
-								 for a 16 bit unsigned integer */
-#define RECV_BUFF_SIZE 32     /* Longest string to server */
+#define RECV_BUFF_SIZE 5000     /* Longest string to server */
 #define MAX_PENDING 5
 #define HTTP_URL_SECTION 7
 

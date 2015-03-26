@@ -3,7 +3,7 @@ File Name:  ErrorFunctions.cpp
 Author:     Austin Brennan
 Course:     CPSC 3600
 Instructor: Sekou Remy
-Due Date:   03/06/2015
+Due Date:   03/25/2015
 
 File Description:
 Ths file contains a routine called DieWithError.

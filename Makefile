@@ -2,7 +2,7 @@ CC = g++
 PROG = simhttp simget
 
 DEPS = httpSim.h
-CPLUSFLAGS = -c -ggdb -O2 -Wall
+CPLUSFLAGS = -std=c++0x -c -ggdb -O2 -Wall
 
 SERVERSRC = httpServer.cpp ErrorFunctions.cpp
 SERVEROBJS = $(SERVERSRC:.c=.o)
@@ -28,7 +28,7 @@ simget: $(CLIENTSRC)
 
 backup:
 	rm -f awbrenn-hw3.tar *.o *.out client *~
-	tar -cvzf awbrenn-hw3.tar *.cpp *.h readme.txt Makefile
+	tar -cvzf awbrenn-hw3.tar.gz *.cpp *.h readme.txt Makefile
 
 server:
 	./simhttp

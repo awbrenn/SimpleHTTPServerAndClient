@@ -1,3 +1,18 @@
+/*********************************************************
+File Name:  httpClient.cpp
+Author:     Austin Brennan
+Course:     CPSC 3600
+Instructor: Sekou Remy
+Due Date:   03/25/2015
+
+
+File Description:
+This file contains an implementation of a simple
+http client. See readme.txt for more details.
+
+*********************************************************/
+
+
 #include "httpSim.h"
 using namespace std;
 
@@ -55,7 +70,7 @@ int main (int argc, char *argv[]) {
     serverAddr.sin_port   = htons(PORT);     /* Server port */
 
     /* If user gave a dotted decimal address, we need to resolve it  */
-    if (serverAddr.sin_addr.s_addr == -1) {
+    if ((int)serverAddr.sin_addr.s_addr == -1) {
         thehost = gethostbyname(SERVER_NAME.c_str());
             serverAddr.sin_addr.s_addr = *((unsigned long *) thehost->h_addr_list[0]);
     }
@@ -65,14 +80,14 @@ int main (int argc, char *argv[]) {
         dieWithError((char *)"connect() failed");
 
     /* Send the string to the server */
-    if (send(sock, REQUEST_MESSAGE.c_str(), REQUEST_MESSAGE.length(), 0) != REQUEST_MESSAGE.length())
+    if (send(sock, REQUEST_MESSAGE.c_str(), REQUEST_MESSAGE.length(), 0) != (int)REQUEST_MESSAGE.length())
         dieWithError((char *)"send() sent a different number of bytes than expected");
 
     getHTTPResponse(sock);
     cout << HTTP_RESPONSE << endl;
 
     close(sock);
-	return 0;
+    return 0;
 }
 
 
@@ -102,19 +117,19 @@ void parseURL(string URL) {
 
 	// basic checks for valid URL
    	if (URL.length() < HTTP_URL_SECTION + 1) // check if the url is long enough
-   		dieWithError((char *)"parseURL() failed: URL is too short");
+	    dieWithError((char *)"parseURL() failed: URL is too short");
 	else if (URL.substr(0, HTTP_URL_SECTION).compare("http://") != 0) // check if the url starts with "http://"
-		dieWithError((char *)"parseURL() failed: URL does not start with \"http://\"");
+	    dieWithError((char *)"parseURL() failed: URL does not start with \"http://\"");
 
-	serverName_endIndex = URL.find_first_of("/", HTTP_URL_SECTION);
+    serverName_endIndex = URL.find_first_of("/", HTTP_URL_SECTION);
 
-	if (serverName_endIndex == URL.npos) { // no path 
-		SERVER_NAME = URL.substr(HTTP_URL_SECTION, URL.length() - HTTP_URL_SECTION);
-	}
-	else {
-		SERVER_NAME = URL.substr(HTTP_URL_SECTION, serverName_endIndex - HTTP_URL_SECTION);
-		FILE_PATH += URL.substr(serverName_endIndex + 1, URL.length() - serverName_endIndex);
-	}
+    if (serverName_endIndex == URL.npos) { // no path 
+        SERVER_NAME = URL.substr(HTTP_URL_SECTION, URL.length() - HTTP_URL_SECTION);
+    }
+    else {
+        SERVER_NAME = URL.substr(HTTP_URL_SECTION, serverName_endIndex - HTTP_URL_SECTION);
+        FILE_PATH += URL.substr(serverName_endIndex + 1, URL.length() - serverName_endIndex);
+    }
 
 	printf("Server name is %s\nFile path is %s\n", SERVER_NAME.c_str(), FILE_PATH.c_str());
 }
