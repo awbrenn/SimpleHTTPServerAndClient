@@ -32,10 +32,9 @@ constants.
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 
-#define RECV_BUFF_SIZE 5000     /* Longest string to server */
+#define RECV_BUFF_SIZE 1000000     /* Longest string to server */
 #define MAX_PENDING 5
 #define HTTP_URL_SECTION 7
 

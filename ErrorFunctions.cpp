@@ -37,6 +37,5 @@ extern void dieWithError(char *error_message) {
     description: - states the proper useage and calls dieWithError
 */
 void stateProperUsageAndDie() {
-    dieWithError((char *)"USAGE ERROR\n\nProper Use:\ndnsq [-t <time>] "
-                         "[-r <retries>] [-p <port>] @<svr> <name>");
+    dieWithError((char *)"USAGE ERROR\nFor proper usage see readme.txt\n");
 }

@@ -30,7 +30,7 @@ void checkHostIsPresent();
 void getServerDateTime();
 void getLastModifiedTime();
 void getContentType();
-string getHTTPErrorMessage(int);
+void getHTTPErrorMessage(int);
 void sendHTTPResponse(int);
 void cleanup();
 
@@ -38,14 +38,18 @@ void cleanup();
 /* global variable declarations */
 unsigned short PORT = 8080;	// default port value
 string SERVER_PATH("./");
+string SERVER_PATH_ORIGINAL("./");
 string HTTP_REQUEST("");
 string HTTP_RESPONSE("");
 string HTTP_RESPONSE_BODY("");
 string HTTP_RESPONSE_HEADER("");
 int HTTP_METHOD;
-int RESPONSE_NUM = 0;
+string HTTP_METHOD_STR("");
+int RESPONSE_NUM = 200;
+string RESPONSE_NUM_MSG("");
 string REQUEST_PATH("");
 string SERVER_DATETIME("");
+string SERVER_DATETIME_SHORT("");
 string LAST_MODIFIED_DATETIME("");
 string RESPONSE_MESSAGE_BODY("");
 string CONTENT_TYPE("");
@@ -67,7 +71,10 @@ int main (int argc, char *argv[]) {
     	PORT = (unsigned short) atoi(argv[2]);
     else if (argc == 4 && strcmp("-p", argv[1]) == 0) {
 		PORT = (unsigned short) atoi(argv[2]);
-		SERVER_PATH = argv[3];
+		SERVER_PATH_ORIGINAL = argv[3];
+        if (SERVER_PATH_ORIGINAL.back() != '/')
+            SERVER_PATH_ORIGINAL.push_back('/');
+        SERVER_PATH = SERVER_PATH_ORIGINAL;
     }
     else
        stateProperUsageAndDie();
@@ -98,18 +105,18 @@ int main (int argc, char *argv[]) {
 		               &clientLen)) < 0)
             dieWithError((char *)"accept() failed");
 
-        // printf("Handling client %s\n", inet_ntoa(clientAddr.sin_addr));
-
         getHTTPRequest(clientSock);
-        cout << "Got Here 1" << endl;
         processHTTPRequest();
         checkHostIsPresent();
         getHTTPResponeBody();
         buildHTTPResponse();
         sendHTTPResponse(clientSock);
-        cout << "Got Here 2" << endl;
-        cleanup();
         close(clientSock);
+
+        // print the final statement
+        fprintf(stdout, "%s\t%s\t%s\t%d %s\n", HTTP_METHOD_STR.c_str(), SERVER_PATH.c_str(),
+                SERVER_DATETIME_SHORT.c_str(), RESPONSE_NUM, RESPONSE_NUM_MSG.c_str());
+        cleanup();
     }
 }
 
@@ -119,26 +126,19 @@ void getHTTPRequest(int clientSock) {
     char httpRequestBuffer[RECV_BUFF_SIZE];
     int messageLen;
 
-    if ((messageLen = recv(clientSock, httpRequestBuffer, RECV_BUFF_SIZE, 0)) < 0)
+    if ((messageLen = read(clientSock, httpRequestBuffer, RECV_BUFF_SIZE)) < 0)
         dieWithError((char *)"recv() failed");
 
-    while (messageLen > 0) {
-        /* build the HTTP_REQUEST as a char vector */
-        for (int i = 0; i < messageLen; ++i) {
-            HTTP_REQUEST += httpRequestBuffer[i];
-        }
-
-        if ((messageLen = recv(clientSock, httpRequestBuffer, RECV_BUFF_SIZE, 0)) < 0)
-            dieWithError((char *)"recv() failed"); 
+    for (int i = 0; i < messageLen; ++i) {
+        HTTP_REQUEST += httpRequestBuffer[i];
     }
 }
 
 
 // sends the response back to the client
 void sendHTTPResponse(int sock) {
-    cout << "Got Here" << endl;
     /* Send the string to the server */
-    if (send(sock, HTTP_RESPONSE.c_str(), HTTP_RESPONSE.length(), 0) != (int)HTTP_RESPONSE.length())
+    if (write(sock, HTTP_RESPONSE.c_str(), HTTP_RESPONSE.length()) != (int)HTTP_RESPONSE.length())
         dieWithError((char *)"send() sent a different number of bytes than expected");
 }
 
@@ -151,7 +151,15 @@ void getHTTPResponeBody() {
         HTTP_RESPONSE_BODY = body;
     }
     else {
-        RESPONSE_NUM = 404;
+        int check = access(SERVER_PATH.c_str(), F_OK);
+
+        if (check == 0)
+            RESPONSE_NUM = 403; // do nothing
+        else if (SERVER_PATH.find(" ") != string::npos) {
+            RESPONSE_NUM = 400;
+        }
+        else
+            RESPONSE_NUM = 404; // FORBIDDEN
     }
 }
 
@@ -160,7 +168,7 @@ void getHTTPResponeBody() {
    in the http request */
 void checkHostIsPresent() {
     if (HTTP_REQUEST.find("\r\nHost:") != string::npos)
-        RESPONSE_NUM = 200;
+        ; // do nothing
     else
         RESPONSE_NUM = 400;
 }
@@ -185,15 +193,12 @@ void getPath() {
         return;
     else
         SERVER_PATH += HTTP_REQUEST.substr(begin_of_path_index + 1, (end_of_path_index - begin_of_path_index) - 1);
-
-    cout << SERVER_PATH << endl;
 }
 
 
 // get the http method of the http request
 void getHTTPMethod() {
     int http_function_end_index;
-    string method;
 
     http_function_end_index = HTTP_REQUEST.find_first_of(" "); // find the index of the first space
 
@@ -204,26 +209,26 @@ void getHTTPMethod() {
     }
 
     /* set the http method based on the REQUEST method. GET & HEAD only */
-    method = HTTP_REQUEST.substr(0, http_function_end_index);
-    if (method.compare("GET") == 0) {
+    HTTP_METHOD_STR = HTTP_REQUEST.substr(0, http_function_end_index);
+    if (HTTP_METHOD_STR.compare("GET") == 0) {
         HTTP_METHOD = 1;
         RESPONSE_NUM = 200;
     }
-    else if (method.compare("HEAD") == 0) {
+    else if (HTTP_METHOD_STR.compare("HEAD") == 0) {
         HTTP_METHOD = 2;
         RESPONSE_NUM = 200;
     }
-    else if (method.compare("PUT")        == 0  or
-             method.compare("DELETE")     == 0  or
-             method.compare("POST")       == 0  or
-             method.compare("CHECKOUT")   == 0  or
-             method.compare("SHOWMETHOD") == 0  or
-             method.compare("LINK")       == 0  or
-             method.compare("UNLINK")     == 0  or
-             method.compare("CHECKIN")    == 0  or
-             method.compare("TEXTSEARCH") == 0  or
-             method.compare("SPACEJUMP")  == 0  or
-             method.compare("SEARCH")     == 0) {
+    else if (HTTP_METHOD_STR.compare("PUT")        == 0  or
+             HTTP_METHOD_STR.compare("DELETE")     == 0  or
+             HTTP_METHOD_STR.compare("POST")       == 0  or
+             HTTP_METHOD_STR.compare("CHECKOUT")   == 0  or
+             HTTP_METHOD_STR.compare("SHOWMETHOD") == 0  or
+             HTTP_METHOD_STR.compare("LINK")       == 0  or
+             HTTP_METHOD_STR.compare("UNLINK")     == 0  or
+             HTTP_METHOD_STR.compare("CHECKIN")    == 0  or
+             HTTP_METHOD_STR.compare("TEXTSEARCH") == 0  or
+             HTTP_METHOD_STR.compare("SPACEJUMP")  == 0  or
+             HTTP_METHOD_STR.compare("SEARCH")     == 0) {
              /*
                 basically if you use any other valid http method
                 just set the HTTP_METHOD to -1
@@ -251,6 +256,7 @@ void buildGoodResponse() {
     getServerDateTime();
     getLastModifiedTime();
     getContentType();
+    RESPONSE_NUM_MSG = "OK";
 
     HTTP_RESPONSE_HEADER = "HTTP/1.1 200 OK\r\n";
     HTTP_RESPONSE_HEADER += "Connection: close\r\n";
@@ -265,34 +271,32 @@ void buildGoodResponse() {
         HTTP_RESPONSE = HTTP_RESPONSE_HEADER + HTTP_RESPONSE_BODY;
     else
         HTTP_RESPONSE = HTTP_RESPONSE_HEADER;
-    cout << "\n" + HTTP_RESPONSE << endl;
 }
 
 
 // build the response of a message with error notification
 void buildBadResponse() {
-    HTTP_RESPONSE_HEADER = "HTTP/1.1 " + to_string(RESPONSE_NUM) +
-                           getHTTPErrorMessage(RESPONSE_NUM) + "\r\n";
+    getHTTPErrorMessage(RESPONSE_NUM);
+    HTTP_RESPONSE_HEADER = "HTTP/1.1 " + to_string(RESPONSE_NUM) + " " +
+                           RESPONSE_NUM_MSG + "\r\n";
+    HTTP_RESPONSE_HEADER += "\r\n";
 
    HTTP_RESPONSE = HTTP_RESPONSE_HEADER;
-    cout << "\n" + HTTP_RESPONSE << endl;
 }
 
 
 // get the http error message based on the response number
-string getHTTPErrorMessage(int RESPONSE_NUM) {
-    string return_string("");
-
+void getHTTPErrorMessage(int RESPONSE_NUM) {
     if (RESPONSE_NUM == 405)
-        return_string = " METHOD NOT FOUND";
+        RESPONSE_NUM_MSG = "METHOD NOT FOUND";
     else if (RESPONSE_NUM == 403)
-        return_string = " FORBIDDEN";
+        RESPONSE_NUM_MSG = "FORBIDDEN";
     else if (RESPONSE_NUM == 404)
-        return_string = " NOT FOUND";
+        RESPONSE_NUM_MSG = "NOT FOUND";
     else if (RESPONSE_NUM == 400)
-        return_string = " BAD REQUEST";
-
-    return return_string;
+        RESPONSE_NUM_MSG = "BAD REQUEST";
+    else
+        RESPONSE_NUM_MSG = "";
 }
 
 
@@ -311,9 +315,10 @@ void getContentType() {
 
     if      (extension.compare("html") == 0)  CONTENT_TYPE = "text/html";
     else if (extension.compare("htm")  == 0)  CONTENT_TYPE = "text/html";
+    else if (extension.compare("css")  == 0)  CONTENT_TYPE = "text/css";
     else if (extension.compare("js")   == 0)  CONTENT_TYPE = "application/javascript";
     else if (extension.compare("txt")  == 0)  CONTENT_TYPE = "text/plain";
-    else if (extension.compare("jpg")  == 0)  CONTENT_TYPE = "image/jpg";
+    else if (extension.compare("jpg")  == 0)  CONTENT_TYPE = "image/jpeg";
     else if (extension.compare("pdf")  == 0)  CONTENT_TYPE = "application/pdf";
     else                                      CONTENT_TYPE = "application/octet-stream";
 }
@@ -330,9 +335,13 @@ void getServerDateTime() {
     if (time_info == NULL)
         dieWithError((char *)"localtime() failed: unable to get time of server");
 
-
+    // get time for client
     strftime (buffer,200,"%a, %d %b %Y %T",time_info);
     SERVER_DATETIME = buffer;
+
+    // get time for server print statement
+    strftime (buffer,200, "%d %b %Y %H:%M",time_info);
+    SERVER_DATETIME_SHORT = buffer;
 }
 
 
@@ -356,7 +365,7 @@ void getLastModifiedTime() {
 
 // cleanup the strings for the next time the server runs
 void cleanup() {
-    SERVER_PATH = "./";
+    SERVER_PATH = SERVER_PATH_ORIGINAL;
     HTTP_REQUEST = "";
     REQUEST_PATH = "";
     SERVER_DATETIME = "";
@@ -366,6 +375,10 @@ void cleanup() {
     HTTP_RESPONSE = "";
     HTTP_RESPONSE_HEADER = "";
     HTTP_RESPONSE_BODY = "";
+    HTTP_METHOD_STR = "";
+    SERVER_DATETIME_SHORT = "";
+    RESPONSE_NUM_MSG = "";
+    RESPONSE_NUM = 200;
 }
 
 

@@ -16,16 +16,17 @@ http client. See readme.txt for more details.
 #include "httpSim.h"
 using namespace std;
 
-/* Function Declarations */
+
+/* function declarations */
 void checkFlag(int index, char *argv[]);
 void parseURL(string URL);
 
 
-/* Global Variable Declarations */
+/* global variable declarations */
 unsigned short PORT = 8080; 		// default port value
 string FILE_PATH("/");
-string SERVER_NAME;
-string OUTPUT_FILENAME;
+string SERVER_NAME("");
+string OUTPUT_FILENAME("");
 string HTTP_RESPONSE("");
 string REQUEST_MESSAGE("GET ");
 void getHTTPResponse(int);
@@ -35,7 +36,6 @@ int main (int argc, char *argv[]) {
 	int sock;
     struct sockaddr_in serverAddr; /* Local address */
 	struct hostent *thehost;         /* Hostent from gethostbyname() */
-//	string request_message("GET ");
 
 
     if (argc == 2) // zero optional flags set
@@ -55,9 +55,8 @@ int main (int argc, char *argv[]) {
     REQUEST_MESSAGE += FILE_PATH;
     REQUEST_MESSAGE += " HTTP/1.1\r\n";
     REQUEST_MESSAGE += "Host: " + SERVER_NAME + "\r\n";
+    REQUEST_MESSAGE += "Connection: close\r\n";
     REQUEST_MESSAGE += "\r\n";
-
-    cout << REQUEST_MESSAGE << endl;
 
     /* Create a TCP socket */
     if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
@@ -84,9 +83,18 @@ int main (int argc, char *argv[]) {
         dieWithError((char *)"send() sent a different number of bytes than expected");
 
     getHTTPResponse(sock);
-    cout << HTTP_RESPONSE << endl;
-
     close(sock);
+
+    if (OUTPUT_FILENAME.compare("") == 0) {
+    	fprintf(stdout, "%s", HTTP_RESPONSE.c_str());
+    }
+	else {
+		ofstream output_file;
+		output_file.open(OUTPUT_FILENAME.c_str());
+		output_file << HTTP_RESPONSE;
+		output_file.close();
+	}
+
     return 0;
 }
 
@@ -94,20 +102,13 @@ int main (int argc, char *argv[]) {
 void getHTTPResponse(int sock) {
     char httpRequestBuffer[RECV_BUFF_SIZE];
     int messageLen;
-    cout << "Got here 1" << endl;
 
-    if ((messageLen = recv(sock, httpRequestBuffer, RECV_BUFF_SIZE, 0)) < 0)
+    if ((messageLen = read(sock, httpRequestBuffer, RECV_BUFF_SIZE)) < 0)
         dieWithError((char *)"recv() failed");
-    cout << "Got here 2" << endl;
 
-    while (messageLen > 0) {
-        /* build the HTTP_RESPONSE as a char vector */
-        for (int i = 0; i < messageLen; ++i) {
-            HTTP_RESPONSE += httpRequestBuffer[i];
-        }
-
-        if ((messageLen = recv(sock, httpRequestBuffer, RECV_BUFF_SIZE, 0)) < 0)
-            dieWithError((char *)"recv() failed"); 
+    /* build the HTTP_RESPONSE as a char vector */
+    for (int i = 0; i < messageLen; ++i) {
+        HTTP_RESPONSE += httpRequestBuffer[i];
     }
 }
 
@@ -130,8 +131,6 @@ void parseURL(string URL) {
         SERVER_NAME = URL.substr(HTTP_URL_SECTION, serverName_endIndex - HTTP_URL_SECTION);
         FILE_PATH += URL.substr(serverName_endIndex + 1, URL.length() - serverName_endIndex);
     }
-
-	printf("Server name is %s\nFile path is %s\n", SERVER_NAME.c_str(), FILE_PATH.c_str());
 }
 
 
